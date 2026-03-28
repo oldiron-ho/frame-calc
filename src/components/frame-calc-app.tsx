@@ -143,28 +143,11 @@ export function FrameCalcApp() {
           <div className="grid gap-4 sm:grid-cols-[1.3fr_0.7fr] sm:items-end">
             <div className="space-y-3">
               <p className="text-sm font-medium text-[var(--muted)]">
-                목조주택 현장에서 바로 확인하는 난간 배치 계산
+                현장에서 바로 확인하는 난간 배치 계산
               </p>
               <h1 className="text-[clamp(2rem,8vw,3.4rem)] font-bold leading-none tracking-[-0.04em]">
-                목조주택
-                <br />
                 난간 계산기
               </h1>
-              <p className="max-w-xl text-sm leading-6 text-[var(--muted)] sm:text-base">
-                전체 길이, 동일 간격 개수, 난간 두께를 입력하면 각 난간이 시작하고
-                끝나는 위치를 즉시 계산합니다. 계산 결과는 기기 안에 자동 저장되어
-                현장 재확인에도 바로 쓸 수 있습니다.
-              </p>
-            </div>
-            <div className="panel soft-glow rounded-[1.8rem] border border-[rgba(189,90,42,0.1)] p-4">
-              <div className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--accent)]">
-                Quick Rules
-              </div>
-              <ul className="mt-3 space-y-2 text-sm leading-6 text-[var(--muted)]">
-                <li>단위는 미터(m) 기준입니다.</li>
-                <li>간격 개수는 같은 간격의 수입니다.</li>
-                <li>유효 계산만 최근 기록에 보관됩니다.</li>
-              </ul>
             </div>
           </div>
         </header>
@@ -173,7 +156,9 @@ export function FrameCalcApp() {
           <div className="mb-4">
             <h2 className="text-lg font-semibold tracking-[-0.02em]">입력값</h2>
             <p className="mt-1 text-sm leading-6 text-[var(--muted)]">
-              소수점은 <span className="font-medium">.</span> 또는{" "}
+              전체 길이는 <span className="font-medium">m</span>, 난간 두께는{" "}
+              <span className="font-medium">mm</span>로 입력합니다. 소수점은{" "}
+              <span className="font-medium">.</span> 또는{" "}
               <span className="font-medium">,</span> 모두 입력할 수 있습니다.
             </p>
           </div>
@@ -181,7 +166,7 @@ export function FrameCalcApp() {
             <MetricField
               id="total-length"
               label="난간 전체 길이"
-              placeholder="예: 3.600"
+              placeholder="예: 3.6"
               unit="m"
               inputMode="decimal"
               value={totalLengthInput}
@@ -203,8 +188,8 @@ export function FrameCalcApp() {
             <MetricField
               id="thickness"
               label="난간 두께"
-              placeholder="예: 0.038"
-              unit="m"
+              placeholder="예: 38"
+              unit="mm"
               inputMode="decimal"
               value={thicknessInput}
               onChange={(value) => {

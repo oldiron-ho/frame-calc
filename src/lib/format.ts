@@ -17,7 +17,7 @@ export function formatInputSummary(input: {
   gapCountInput: string;
   thicknessInput: string;
 }): string {
-  return `전체 ${input.totalLengthInput}m · 간격 ${input.gapCountInput}개 · 두께 ${input.thicknessInput}m`;
+  return `전체 ${input.totalLengthInput}m · 간격 ${input.gapCountInput}개 · 두께 ${input.thicknessInput}mm`;
 }
 
 export function formatResultSummary(result: {

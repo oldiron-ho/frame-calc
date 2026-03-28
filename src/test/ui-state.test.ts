@@ -18,7 +18,7 @@ describe("buildCalculatorUiState", () => {
       buildCalculatorUiState({
         totalLengthInput: "3.6",
         gapCountInput: "",
-        thicknessInput: "0.038",
+        thicknessInput: "38",
       }),
     ).toMatchObject({ kind: "hint" });
   });
@@ -28,7 +28,7 @@ describe("buildCalculatorUiState", () => {
       buildCalculatorUiState({
         totalLengthInput: "3.6",
         gapCountInput: "0",
-        thicknessInput: "0.038",
+        thicknessInput: "38",
       }),
     ).toMatchObject({
       kind: "error",
@@ -39,7 +39,7 @@ describe("buildCalculatorUiState", () => {
       buildCalculatorUiState({
         totalLengthInput: "3.6",
         gapCountInput: "5.5",
-        thicknessInput: "0.038",
+        thicknessInput: "38",
       }),
     ).toMatchObject({
       kind: "error",
@@ -51,7 +51,7 @@ describe("buildCalculatorUiState", () => {
     const state = buildCalculatorUiState({
       totalLengthInput: "3.6",
       gapCountInput: "5",
-      thicknessInput: "0.038",
+      thicknessInput: "38",
     });
 
     expect(state.kind).toBe("ready");

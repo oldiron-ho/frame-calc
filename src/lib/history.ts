@@ -1,6 +1,13 @@
 import { calculateRailLayout, type RailLayoutResult } from "@/lib/rail-calculator";
+import {
+  millimetersToMeters,
+  normalizeDecimalInput,
+  parseDecimalInput,
+  parseStrictInt,
+  toCanonicalDecimalInput,
+} from "@/lib/number-input";
 
-export const HISTORY_STORAGE_KEY = "framecalc-history-v1";
+export const HISTORY_STORAGE_KEY = "framecalc-history-v2";
 export const MAX_HISTORY_ENTRIES = 20;
 const HISTORY_STORAGE_EVENT = "framecalc-history-sync";
 const EMPTY_HISTORY_ENTRIES: CalculationHistoryEntry[] = [];
@@ -33,9 +40,9 @@ export function createCalculationHistorySnapshot(inputs: {
   gapCountInput: string;
   thicknessInput: string;
 }): CalculationHistorySnapshot | null {
-  const normalizedTotalLengthInput = normalizeMetricInput(inputs.totalLengthInput);
+  const normalizedTotalLengthInput = normalizeDecimalInput(inputs.totalLengthInput);
   const normalizedGapCountInput = inputs.gapCountInput.trim();
-  const normalizedThicknessInput = normalizeMetricInput(inputs.thicknessInput);
+  const normalizedThicknessInput = normalizeDecimalInput(inputs.thicknessInput);
 
   if (
     normalizedTotalLengthInput.length === 0 ||
@@ -45,18 +52,22 @@ export function createCalculationHistorySnapshot(inputs: {
     return null;
   }
 
-  const totalLength = toMetricNumber(normalizedTotalLengthInput);
-  const gapCount = toStrictInt(normalizedGapCountInput);
-  const thickness = toMetricNumber(normalizedThicknessInput);
+  const totalLength = parseDecimalInput(normalizedTotalLengthInput);
+  const gapCount = parseStrictInt(normalizedGapCountInput);
+  const thicknessInMillimeters = parseDecimalInput(normalizedThicknessInput);
 
-  if (totalLength === null || gapCount === null || thickness === null) {
+  if (
+    totalLength === null ||
+    gapCount === null ||
+    thicknessInMillimeters === null
+  ) {
     return null;
   }
 
   const snapshot = {
-    totalLengthInput: toCanonicalMetricInput(totalLength),
+    totalLengthInput: toCanonicalDecimalInput(totalLength),
     gapCountInput: gapCount.toString(),
-    thicknessInput: toCanonicalMetricInput(thickness),
+    thicknessInput: toCanonicalDecimalInput(thicknessInMillimeters),
   };
 
   return snapshotToLayoutResultOrNull(snapshot) === null ? null : snapshot;
@@ -65,16 +76,24 @@ export function createCalculationHistorySnapshot(inputs: {
 export function snapshotToLayoutResultOrNull(
   snapshot: CalculationHistorySnapshot,
 ): RailLayoutResult | null {
-  const totalLength = toMetricNumber(snapshot.totalLengthInput);
-  const gapCount = toStrictInt(snapshot.gapCountInput);
-  const thickness = toMetricNumber(snapshot.thicknessInput);
+  const totalLength = parseDecimalInput(snapshot.totalLengthInput);
+  const gapCount = parseStrictInt(snapshot.gapCountInput);
+  const thicknessInMillimeters = parseDecimalInput(snapshot.thicknessInput);
 
-  if (totalLength === null || gapCount === null || thickness === null) {
+  if (
+    totalLength === null ||
+    gapCount === null ||
+    thicknessInMillimeters === null
+  ) {
     return null;
   }
 
   try {
-    return calculateRailLayout(totalLength, gapCount, thickness);
+    return calculateRailLayout(
+      totalLength,
+      gapCount,
+      millimetersToMeters(thicknessInMillimeters),
+    );
   } catch {
     return null;
   }
@@ -238,39 +257,4 @@ function createHistoryId(): string {
   }
 
   return `history-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-}
-
-function normalizeMetricInput(value: string): string {
-  return value.trim().replaceAll(",", ".");
-}
-
-function toMetricNumber(value: string): number | null {
-  const normalized = value.replaceAll(",", ".");
-  if (!/^[+-]?(?:\d+\.?\d*|\.\d+)$/.test(normalized)) {
-    return null;
-  }
-
-  const parsed = Number(normalized);
-  return Number.isFinite(parsed) ? parsed : null;
-}
-
-function toCanonicalMetricInput(value: number): string {
-  const asString = value.toString();
-  if (!/[eE]/.test(asString)) {
-    return asString;
-  }
-
-  return value.toLocaleString("en-US", {
-    useGrouping: false,
-    maximumFractionDigits: 20,
-  });
-}
-
-function toStrictInt(value: string): number | null {
-  if (!/^[+-]?\d+$/.test(value)) {
-    return null;
-  }
-
-  const parsed = Number(value);
-  return Number.isInteger(parsed) ? parsed : null;
 }

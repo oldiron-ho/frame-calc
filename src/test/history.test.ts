@@ -17,21 +17,21 @@ describe("history helpers", () => {
       savedAtMillis: 100,
       totalLengthInput: "3.600",
       gapCountInput: "5",
-      thicknessInput: "0.038",
+      thicknessInput: "38",
     });
     const other = historyEntry({
       id: "other",
       savedAtMillis: 90,
       totalLengthInput: "2.400",
       gapCountInput: "3",
-      thicknessInput: "0.050",
+      thicknessInput: "50",
     });
     const replacement = historyEntry({
       id: "replacement",
       savedAtMillis: 110,
       totalLengthInput: "3.6",
       gapCountInput: "5",
-      thicknessInput: "0.0380",
+      thicknessInput: "38.0",
     });
 
     const updatedEntries = withSavedEntry([duplicate, other], replacement);
@@ -46,7 +46,7 @@ describe("history helpers", () => {
         savedAtMillis: index,
         totalLengthInput: (2 + index).toString(),
         gapCountInput: "2",
-        thicknessInput: "0.1",
+        thicknessInput: "100",
       });
     });
     const newEntry = historyEntry({
@@ -54,7 +54,7 @@ describe("history helpers", () => {
       savedAtMillis: 999,
       totalLengthInput: "99.9",
       gapCountInput: "4",
-      thicknessInput: "0.2",
+      thicknessInput: "200",
     });
 
     const updatedEntries = withSavedEntry(existingEntries, newEntry);
@@ -82,28 +82,28 @@ describe("history helpers", () => {
         savedAtMillis: 20,
         totalLengthInput: "3.6",
         gapCountInput: "5",
-        thicknessInput: "0.038",
+        thicknessInput: "38",
       }),
     ];
 
     const decodedEntries = parseHistoryEntries(serializeHistoryEntries(entries));
 
     expect(decodedEntries).toEqual(entries);
-    expect(parseHistoryEntries('[{"id":"bad","savedAtMillis":1,"snapshot":{"totalLengthInput":"0","gapCountInput":"2","thicknessInput":"0.1"}}]')).toEqual([]);
+    expect(parseHistoryEntries('[{"id":"bad","savedAtMillis":1,"snapshot":{"totalLengthInput":"0","gapCountInput":"2","thicknessInput":"100"}}]')).toEqual([]);
   });
 
   it("normalizes equivalent numeric strings into a canonical snapshot", () => {
     const snapshot = createCalculationHistorySnapshot({
       totalLengthInput: "3.600",
       gapCountInput: "5",
-      thicknessInput: "0.0380",
+      thicknessInput: "38.0",
     });
 
     expect(snapshot).not.toBeNull();
     expect(snapshot).toEqual({
       totalLengthInput: "3.6",
       gapCountInput: "5",
-      thicknessInput: "0.038",
+      thicknessInput: "38",
     });
   });
 });
@@ -118,7 +118,7 @@ function historyEntry(input: {
   const snapshot = createCalculationHistorySnapshot({
     totalLengthInput: input.totalLengthInput ?? "2.4",
     gapCountInput: input.gapCountInput ?? "3",
-    thicknessInput: input.thicknessInput ?? "0.05",
+    thicknessInput: input.thicknessInput ?? "50",
   });
 
   if (snapshot === null) {
