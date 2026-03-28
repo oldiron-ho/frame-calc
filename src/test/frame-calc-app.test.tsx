@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -36,9 +36,23 @@ describe("FrameCalcApp", () => {
     const savedEntries = parseHistoryEntries(
       window.localStorage.getItem(HISTORY_STORAGE_KEY),
     );
+    const historySection = getHistorySection();
 
     expect(savedEntries).toHaveLength(1);
-    expect(screen.getByText("전체 3600mm · 간격 5개 · 두께 38mm")).toBeInTheDocument();
+    expect(
+      within(historySection).getByRole("button", {
+        name: "전체 3600mm · 간격 5개 · 두께 38mm",
+      }),
+    ).toBeInTheDocument();
+    expect(within(historySection).getAllByText("전체(mm)")).toHaveLength(1);
+    expect(within(historySection).getAllByText("간격(개)")).toHaveLength(1);
+    expect(within(historySection).getAllByText("두께(mm)")).toHaveLength(1);
+    expect(within(historySection).getByText("3600")).toBeInTheDocument();
+    expect(within(historySection).getByText("5")).toBeInTheDocument();
+    expect(within(historySection).getByText("38")).toBeInTheDocument();
+    expect(
+      within(historySection).queryByText("전체 3600mm · 간격 5개 · 두께 38mm"),
+    ).not.toBeInTheDocument();
     expect(screen.queryByText(/저장 시각/)).not.toBeInTheDocument();
   });
 
@@ -299,3 +313,14 @@ describe("FrameCalcApp", () => {
     expect(screen.queryByText("1,462.8")).not.toBeInTheDocument();
   });
 });
+
+function getHistorySection(): HTMLElement {
+  const historyHeading = screen.getByRole("heading", { name: "최근 실행 기록" });
+  const historySection = historyHeading.closest("section");
+
+  if (historySection === null) {
+    throw new Error("최근 실행 기록 섹션을 찾지 못했습니다.");
+  }
+
+  return historySection;
+}

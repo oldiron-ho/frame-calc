@@ -31,6 +31,9 @@ import {
 import { sanitizeDigitsOnlyInput } from "@/lib/number-input";
 import { buildCalculatorUiState } from "@/lib/ui-state";
 
+const HISTORY_VALUE_GRID_CLASS_NAME =
+  "grid grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)_minmax(0,0.8fr)] gap-2";
+
 export function FrameCalcApp() {
   const [totalLengthInput, setTotalLengthInput] = useState("");
   const [gapCountInput, setGapCountInput] = useState("");
@@ -377,6 +380,7 @@ function HistorySection(props: {
   onDelete: (entry: CalculationHistoryEntry) => void;
 }) {
   const visibleEntries = props.historyEntries.slice(0, MAX_HISTORY_ENTRIES);
+  const showValueHeadings = visibleEntries.length > 0;
 
   return (
     <section className="panel rise-in mt-5 rounded-[2rem] p-5 [animation-delay:370ms]">
@@ -385,6 +389,15 @@ function HistorySection(props: {
         <p className="mt-1 text-sm leading-6 text-[var(--muted)]">
           항목을 누르면 다시 불러옵니다.
         </p>
+        {showValueHeadings ? (
+          <div
+            className={`${HISTORY_VALUE_GRID_CLASS_NAME} mt-3 px-4 pr-12 text-[0.72rem] font-semibold tracking-[0.14em] text-[var(--muted)]`}
+          >
+            <span>전체(mm)</span>
+            <span className="text-right">간격(개)</span>
+            <span className="text-right">두께(mm)</span>
+          </div>
+        ) : null}
       </div>
 
       {visibleEntries.length === 0 ? (
@@ -414,25 +427,31 @@ function HistoryListItem(props: {
   onSelect: (entry: CalculationHistoryEntry) => void;
   onDelete: (entry: CalculationHistoryEntry) => void;
 }) {
+  const { snapshot } = props.entry;
+
   return (
     <article className="relative overflow-hidden rounded-[1.3rem] border border-[rgba(112,72,42,0.08)] bg-[rgba(255,255,255,0.68)] shadow-[0_10px_24px_rgba(117,72,39,0.06)]">
       <button
         type="button"
-        aria-label={formatInputSummary(props.entry.snapshot)}
+        aria-label={formatInputSummary(snapshot)}
         onClick={() => {
           props.onSelect(props.entry);
         }}
-        className="relative flex w-full items-center gap-3 px-4 py-3 pr-12 text-left transition"
+        className="relative w-full px-4 py-3 pr-12 text-left transition"
       >
-        <span className="min-w-0 flex-1 truncate text-sm font-semibold tracking-[-0.02em]">
-          {formatInputSummary(props.entry.snapshot)}
+        <span
+          className={`${HISTORY_VALUE_GRID_CLASS_NAME} text-sm font-semibold tracking-[-0.02em] tabular-nums`}
+        >
+          <span className="min-w-0 truncate">{snapshot.totalLengthInput}</span>
+          <span className="text-right">{snapshot.gapCountInput}</span>
+          <span className="text-right">{snapshot.thicknessInput}</span>
         </span>
       </button>
 
       <div className="absolute inset-y-0 right-3 flex items-center">
         <button
           type="button"
-          aria-label={`${formatInputSummary(props.entry.snapshot)} 삭제 버튼`}
+          aria-label={`${formatInputSummary(snapshot)} 삭제 버튼`}
           onClick={() => {
             props.onDelete(props.entry);
           }}
