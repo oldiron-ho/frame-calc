@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -16,8 +16,7 @@ describe("FrameCalcApp", () => {
     vi.useRealTimers();
   });
 
-  it("auto-saves a valid calculation after the debounce delay", async () => {
-    vi.useFakeTimers();
+  it("saves a valid calculation when an input loses focus", () => {
     render(<FrameCalcApp />);
 
     fireEvent.change(screen.getByLabelText("난간 전체 길이"), {
@@ -30,9 +29,9 @@ describe("FrameCalcApp", () => {
       target: { value: "38" },
     });
 
-    act(() => {
-      vi.advanceTimersByTime(500);
-    });
+    expect(window.localStorage.getItem(HISTORY_STORAGE_KEY)).toBeNull();
+
+    fireEvent.blur(screen.getByLabelText("난간 두께"));
 
     const savedEntries = parseHistoryEntries(
       window.localStorage.getItem(HISTORY_STORAGE_KEY),
@@ -41,6 +40,38 @@ describe("FrameCalcApp", () => {
     expect(savedEntries).toHaveLength(1);
     expect(screen.getByText("전체 3600mm · 간격 5개 · 두께 38mm")).toBeInTheDocument();
     expect(screen.queryByText(/저장 시각/)).not.toBeInTheDocument();
+  });
+
+  it("saves on Enter and does not duplicate the same snapshot on the following blur", () => {
+    render(<FrameCalcApp />);
+
+    fireEvent.change(screen.getByLabelText("난간 전체 길이"), {
+      target: { value: "3600" },
+    });
+    fireEvent.change(screen.getByLabelText("난간살 사이의 개수"), {
+      target: { value: "5" },
+    });
+
+    const thicknessInput = screen.getByLabelText("난간 두께");
+    fireEvent.change(thicknessInput, {
+      target: { value: "38" },
+    });
+    fireEvent.keyDown(thicknessInput, {
+      key: "Enter",
+      code: "Enter",
+    });
+    fireEvent.blur(thicknessInput);
+
+    const savedEntries = parseHistoryEntries(
+      window.localStorage.getItem(HISTORY_STORAGE_KEY),
+    );
+
+    expect(savedEntries).toHaveLength(1);
+    expect(savedEntries[0]?.snapshot).toEqual({
+      totalLengthInput: "3600",
+      gapCountInput: "5",
+      thicknessInput: "38",
+    });
   });
 
   it("loads saved history entries and restores them when selected", async () => {
@@ -71,6 +102,52 @@ describe("FrameCalcApp", () => {
     expect(screen.getByLabelText("난간 전체 길이")).toHaveValue("3600");
     expect(screen.getByLabelText("난간살 사이의 개수")).toHaveValue("5");
     expect(screen.getByLabelText("난간 두께")).toHaveValue("38");
+  });
+
+  it("does not create a new history entry when an existing one is only restored", async () => {
+    window.localStorage.setItem(
+      HISTORY_STORAGE_KEY,
+      serializeHistoryEntries([
+        {
+          id: "history-1",
+          savedAtMillis: Date.UTC(2026, 2, 28, 10, 30),
+          snapshot: {
+            totalLengthInput: "3600",
+            gapCountInput: "5",
+            thicknessInput: "38",
+          },
+        },
+      ]),
+    );
+
+    const user = userEvent.setup();
+    render(<FrameCalcApp />);
+
+    await user.click(
+      await screen.findByRole("button", {
+        name: "전체 3600mm · 간격 5개 · 두께 38mm",
+      }),
+    );
+
+    fireEvent.blur(screen.getByLabelText("난간 두께"));
+
+    const savedEntries = parseHistoryEntries(
+      window.localStorage.getItem(HISTORY_STORAGE_KEY),
+    );
+
+    expect(savedEntries).toHaveLength(1);
+    expect(savedEntries[0]?.id).toBe("history-1");
+  });
+
+  it("does not save when the inputs are incomplete on blur", () => {
+    render(<FrameCalcApp />);
+
+    fireEvent.change(screen.getByLabelText("난간 전체 길이"), {
+      target: { value: "3600" },
+    });
+    fireEvent.blur(screen.getByLabelText("난간 전체 길이"));
+
+    expect(window.localStorage.getItem(HISTORY_STORAGE_KEY)).toBeNull();
   });
 
   it("migrates legacy v2 history entries stored in meters into millimeters", async () => {

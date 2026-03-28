@@ -3,7 +3,7 @@
 import {
   type ClipboardEvent,
   type FormEvent,
-  useEffect,
+  type KeyboardEvent,
   useState,
   useSyncExternalStore,
   type HTMLAttributes,
@@ -30,13 +30,10 @@ import {
 import { sanitizeDigitsOnlyInput } from "@/lib/number-input";
 import { buildCalculatorUiState } from "@/lib/ui-state";
 
-const AUTO_SAVE_DELAY_MILLIS = 500;
-
 export function FrameCalcApp() {
   const [totalLengthInput, setTotalLengthInput] = useState("");
   const [gapCountInput, setGapCountInput] = useState("");
   const [thicknessInput, setThicknessInput] = useState("");
-  const [autoSaveEnabled, setAutoSaveEnabled] = useState(true);
   const [lastSavedSignature, setLastSavedSignature] = useState<string | null>(null);
   const historyEntries = useSyncExternalStore(
     subscribeToHistoryEntries,
@@ -61,8 +58,8 @@ export function FrameCalcApp() {
       ? getSnapshotSignature(currentSnapshot)
       : null;
 
-  useEffect(() => {
-    if (!autoSaveEnabled || currentSnapshot === null || readySignature === null) {
+  function saveCurrentSnapshotIfNeeded(): void {
+    if (currentSnapshot === null || readySignature === null) {
       return;
     }
 
@@ -70,46 +67,16 @@ export function FrameCalcApp() {
       return;
     }
 
-    const timeoutId = window.setTimeout(() => {
-      const nextEntries = withSavedEntry(
-        historyEntries,
-        createHistoryEntry(currentSnapshot),
-      );
-      persistHistoryEntries(nextEntries, window.localStorage);
-      notifyHistoryEntriesChanged();
-      setLastSavedSignature(readySignature);
-    }, AUTO_SAVE_DELAY_MILLIS);
-
-    return () => {
-      window.clearTimeout(timeoutId);
-    };
-  }, [
-    autoSaveEnabled,
-    currentSnapshot,
-    historyEntries,
-    lastSavedSignature,
-    readySignature,
-  ]);
-
-  function enableAutoSaveAndUpdate(
-    updater: (value: string) => void,
-    value: string,
-  ): void {
-    setAutoSaveEnabled(true);
-    const nextSnapshot = createCalculationHistorySnapshot({
-      totalLengthInput:
-        updater === setTotalLengthInput ? value : totalLengthInput,
-      gapCountInput: updater === setGapCountInput ? value : gapCountInput,
-      thicknessInput: updater === setThicknessInput ? value : thicknessInput,
-    });
-    if (nextSnapshot === null) {
-      setLastSavedSignature(null);
-    }
-    updater(value);
+    const nextEntries = withSavedEntry(
+      historyEntries,
+      createHistoryEntry(currentSnapshot),
+    );
+    persistHistoryEntries(nextEntries, window.localStorage);
+    notifyHistoryEntriesChanged();
+    setLastSavedSignature(readySignature);
   }
 
   function handleSelectHistory(entry: CalculationHistoryEntry): void {
-    setAutoSaveEnabled(false);
     setLastSavedSignature(getSnapshotSignature(entry.snapshot));
     setTotalLengthInput(entry.snapshot.totalLengthInput);
     setGapCountInput(entry.snapshot.gapCountInput);
@@ -166,9 +133,8 @@ export function FrameCalcApp() {
               unit="mm"
               inputMode="numeric"
               value={totalLengthInput}
-              onChange={(value) => {
-                enableAutoSaveAndUpdate(setTotalLengthInput, value);
-              }}
+              onChange={setTotalLengthInput}
+              onCommit={saveCurrentSnapshotIfNeeded}
             />
             <MetricField
               id="gap-count"
@@ -177,9 +143,8 @@ export function FrameCalcApp() {
               unit="개"
               inputMode="numeric"
               value={gapCountInput}
-              onChange={(value) => {
-                enableAutoSaveAndUpdate(setGapCountInput, value);
-              }}
+              onChange={setGapCountInput}
+              onCommit={saveCurrentSnapshotIfNeeded}
             />
             <MetricField
               id="thickness"
@@ -188,9 +153,8 @@ export function FrameCalcApp() {
               unit="mm"
               inputMode="numeric"
               value={thicknessInput}
-              onChange={(value) => {
-                enableAutoSaveAndUpdate(setThicknessInput, value);
-              }}
+              onChange={setThicknessInput}
+              onCommit={saveCurrentSnapshotIfNeeded}
             />
           </div>
         </section>
@@ -222,6 +186,7 @@ function MetricField(props: {
   inputMode: HTMLAttributes<HTMLInputElement>["inputMode"];
   value: string;
   onChange: (value: string) => void;
+  onCommit: () => void;
 }) {
   function handleChange(value: string): void {
     props.onChange(sanitizeDigitsOnlyInput(value));
@@ -241,6 +206,15 @@ function MetricField(props: {
     }
   }
 
+  function handleKeyDown(event: KeyboardEvent<HTMLInputElement>): void {
+    if (event.key !== "Enter") {
+      return;
+    }
+
+    event.preventDefault();
+    event.currentTarget.blur();
+  }
+
   return (
     <label className="grid gap-2" htmlFor={props.id}>
       <span className="text-sm font-semibold tracking-[-0.02em]">{props.label}</span>
@@ -255,6 +229,8 @@ function MetricField(props: {
           value={props.value}
           onBeforeInput={handleBeforeInput}
           onPaste={handlePaste}
+          onBlur={props.onCommit}
+          onKeyDown={handleKeyDown}
           onChange={(event) => {
             handleChange(event.target.value);
           }}
