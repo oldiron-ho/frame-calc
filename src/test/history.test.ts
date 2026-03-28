@@ -15,23 +15,23 @@ describe("history helpers", () => {
     const duplicate = historyEntry({
       id: "existing-duplicate",
       savedAtMillis: 100,
-      totalLengthInput: "3.600",
+      totalLengthInput: "3600",
       gapCountInput: "5",
       thicknessInput: "38",
     });
     const other = historyEntry({
       id: "other",
       savedAtMillis: 90,
-      totalLengthInput: "2.400",
+      totalLengthInput: "2400",
       gapCountInput: "3",
       thicknessInput: "50",
     });
     const replacement = historyEntry({
       id: "replacement",
       savedAtMillis: 110,
-      totalLengthInput: "3.6",
+      totalLengthInput: "3600",
       gapCountInput: "5",
-      thicknessInput: "38.0",
+      thicknessInput: "38",
     });
 
     const updatedEntries = withSavedEntry([duplicate, other], replacement);
@@ -44,7 +44,7 @@ describe("history helpers", () => {
       return historyEntry({
         id: `entry-${index}`,
         savedAtMillis: index,
-        totalLengthInput: (2 + index).toString(),
+        totalLengthInput: ((2 + index) * 1000).toString(),
         gapCountInput: "2",
         thicknessInput: "100",
       });
@@ -52,7 +52,7 @@ describe("history helpers", () => {
     const newEntry = historyEntry({
       id: "new-entry",
       savedAtMillis: 999,
-      totalLengthInput: "99.9",
+      totalLengthInput: "99900",
       gapCountInput: "4",
       thicknessInput: "200",
     });
@@ -80,7 +80,7 @@ describe("history helpers", () => {
       historyEntry({
         id: "second",
         savedAtMillis: 20,
-        totalLengthInput: "3.6",
+        totalLengthInput: "3600",
         gapCountInput: "5",
         thicknessInput: "38",
       }),
@@ -94,14 +94,14 @@ describe("history helpers", () => {
 
   it("normalizes equivalent numeric strings into a canonical snapshot", () => {
     const snapshot = createCalculationHistorySnapshot({
-      totalLengthInput: "3.600",
+      totalLengthInput: "003600",
       gapCountInput: "5",
-      thicknessInput: "38.0",
+      thicknessInput: "038",
     });
 
     expect(snapshot).not.toBeNull();
     expect(snapshot).toEqual({
-      totalLengthInput: "3.6",
+      totalLengthInput: "3600",
       gapCountInput: "5",
       thicknessInput: "38",
     });
@@ -116,7 +116,7 @@ function historyEntry(input: {
   thicknessInput?: string;
 }): CalculationHistoryEntry {
   const snapshot = createCalculationHistorySnapshot({
-    totalLengthInput: input.totalLengthInput ?? "2.4",
+    totalLengthInput: input.totalLengthInput ?? "2400",
     gapCountInput: input.gapCountInput ?? "3",
     thicknessInput: input.thicknessInput ?? "50",
   });

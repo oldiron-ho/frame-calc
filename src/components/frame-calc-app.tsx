@@ -1,6 +1,8 @@
 "use client";
 
 import {
+  type ClipboardEvent,
+  type FormEvent,
   useEffect,
   useState,
   useSyncExternalStore,
@@ -23,8 +25,9 @@ import {
 } from "@/lib/history";
 import {
   formatInputSummary,
-  formatMeters,
+  formatMillimeters,
 } from "@/lib/format";
+import { sanitizeDigitsOnlyInput } from "@/lib/number-input";
 import { buildCalculatorUiState } from "@/lib/ui-state";
 
 const AUTO_SAVE_DELAY_MILLIS = 500;
@@ -151,19 +154,17 @@ export function FrameCalcApp() {
           <div className="mb-4">
             <h2 className="text-lg font-semibold tracking-[-0.02em]">입력값</h2>
             <p className="mt-1 text-sm leading-6 text-[var(--muted)]">
-              전체 길이는 <span className="font-medium">m</span>, 난간 두께는{" "}
-              <span className="font-medium">mm</span>로 입력합니다. 소수점은{" "}
-              <span className="font-medium">.</span> 또는{" "}
-              <span className="font-medium">,</span> 모두 입력할 수 있습니다.
+              전체 길이와 난간 두께는 <span className="font-medium">mm</span> 기준
+              정수로 입력합니다. 소수점과 문자는 입력되지 않습니다.
             </p>
           </div>
           <div className="grid gap-4">
             <MetricField
               id="total-length"
               label="난간 전체 길이"
-              placeholder="예: 3.6"
-              unit="m"
-              inputMode="decimal"
+              placeholder="예: 3600"
+              unit="mm"
+              inputMode="numeric"
               value={totalLengthInput}
               onChange={(value) => {
                 enableAutoSaveAndUpdate(setTotalLengthInput, value);
@@ -185,7 +186,7 @@ export function FrameCalcApp() {
               label="난간 두께"
               placeholder="예: 38"
               unit="mm"
-              inputMode="decimal"
+              inputMode="numeric"
               value={thicknessInput}
               onChange={(value) => {
                 enableAutoSaveAndUpdate(setThicknessInput, value);
@@ -222,6 +223,24 @@ function MetricField(props: {
   value: string;
   onChange: (value: string) => void;
 }) {
+  function handleChange(value: string): void {
+    props.onChange(sanitizeDigitsOnlyInput(value));
+  }
+
+  function handleBeforeInput(event: FormEvent<HTMLInputElement>): void {
+    const nativeEvent = event.nativeEvent as InputEvent;
+    if (nativeEvent.data !== null && /\D/.test(nativeEvent.data)) {
+      event.preventDefault();
+    }
+  }
+
+  function handlePaste(event: ClipboardEvent<HTMLInputElement>): void {
+    const pastedText = event.clipboardData.getData("text");
+    if (/\D/.test(pastedText)) {
+      event.preventDefault();
+    }
+  }
+
   return (
     <label className="grid gap-2" htmlFor={props.id}>
       <span className="text-sm font-semibold tracking-[-0.02em]">{props.label}</span>
@@ -231,10 +250,13 @@ function MetricField(props: {
           aria-label={props.label}
           type="text"
           inputMode={props.inputMode}
+          pattern="[0-9]*"
           placeholder={props.placeholder}
           value={props.value}
+          onBeforeInput={handleBeforeInput}
+          onPaste={handlePaste}
           onChange={(event) => {
-            props.onChange(event.target.value);
+            handleChange(event.target.value);
           }}
           className="h-14 w-full rounded-[1.25rem] border border-[rgba(112,72,42,0.12)] bg-[rgba(255,255,255,0.76)] px-4 pr-14 text-base shadow-[inset_0_1px_0_rgba(255,255,255,0.5)] outline-none transition focus:border-[rgba(189,90,42,0.55)] focus:ring-4 focus:ring-[rgba(189,90,42,0.12)]"
         />
@@ -271,7 +293,7 @@ function SummarySection(props: { railCount: number; gapSize: number }) {
   return (
     <section className="rise-in mt-5 grid gap-3 [animation-delay:230ms] sm:grid-cols-2">
       <SummaryCard label="난간 개수" value={props.railCount.toString()} unit="개" />
-      <SummaryCard label="동일 간격" value={formatMeters(props.gapSize)} unit="m" accent />
+      <SummaryCard label="동일 간격" value={formatMillimeters(props.gapSize)} unit="mm" accent />
     </section>
   );
 }
@@ -334,13 +356,13 @@ function ResultsSection(props: {
                 <div className="rounded-2xl bg-[rgba(239,225,206,0.72)] px-3 py-3">
                   <dt className="text-[var(--muted)]">시작 위치</dt>
                   <dd className="font-display mt-1 text-base font-bold text-[var(--accent-deep)]">
-                    {formatMeters(position.start)}m
+                    {formatMillimeters(position.start)}mm
                   </dd>
                 </div>
                 <div className="rounded-2xl bg-[rgba(239,225,206,0.72)] px-3 py-3">
                   <dt className="text-[var(--muted)]">끝 위치</dt>
                   <dd className="font-display mt-1 text-base font-bold text-[var(--accent-deep)]">
-                    {formatMeters(position.end)}m
+                    {formatMillimeters(position.end)}mm
                   </dd>
                 </div>
               </dl>
@@ -352,8 +374,8 @@ function ResultsSection(props: {
       <div className="hidden overflow-hidden rounded-[1.6rem] border border-[rgba(112,72,42,0.1)] md:block">
         <div className="grid grid-cols-[0.9fr_1.2fr_1.2fr] bg-[rgba(239,225,206,0.9)] px-4 py-3 text-sm font-semibold text-[var(--muted)]">
           <div>번호</div>
-          <div className="text-right">시작 위치 (m)</div>
-          <div className="text-right">끝 위치 (m)</div>
+          <div className="text-right">시작 위치 (mm)</div>
+          <div className="text-right">끝 위치 (mm)</div>
         </div>
         {props.positions.map((position) => {
           return (
@@ -362,8 +384,8 @@ function ResultsSection(props: {
               className="grid grid-cols-[0.9fr_1.2fr_1.2fr] border-t border-[rgba(112,72,42,0.08)] bg-[rgba(255,255,255,0.56)] px-4 py-3 text-sm"
             >
               <div className="font-medium">{position.index}번</div>
-              <div className="text-right font-medium">{formatMeters(position.start)}</div>
-              <div className="text-right font-medium">{formatMeters(position.end)}</div>
+              <div className="text-right font-medium">{formatMillimeters(position.start)}</div>
+              <div className="text-right font-medium">{formatMillimeters(position.end)}</div>
             </div>
           );
         })}

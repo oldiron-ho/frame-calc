@@ -21,7 +21,7 @@ describe("FrameCalcApp", () => {
     render(<FrameCalcApp />);
 
     fireEvent.change(screen.getByLabelText("난간 전체 길이"), {
-      target: { value: "3.6" },
+      target: { value: "3600" },
     });
     fireEvent.change(screen.getByLabelText("난간살 사이의 개수"), {
       target: { value: "5" },
@@ -39,7 +39,7 @@ describe("FrameCalcApp", () => {
     );
 
     expect(savedEntries).toHaveLength(1);
-    expect(screen.getByText("전체 3.6m · 간격 5개 · 두께 38mm")).toBeInTheDocument();
+    expect(screen.getByText("전체 3600mm · 간격 5개 · 두께 38mm")).toBeInTheDocument();
     expect(screen.queryByText(/저장 시각/)).not.toBeInTheDocument();
   });
 
@@ -49,6 +49,36 @@ describe("FrameCalcApp", () => {
       serializeHistoryEntries([
         {
           id: "history-1",
+          savedAtMillis: Date.UTC(2026, 2, 28, 10, 30),
+          snapshot: {
+            totalLengthInput: "3600",
+            gapCountInput: "5",
+            thicknessInput: "38",
+          },
+        },
+      ]),
+    );
+
+    const user = userEvent.setup();
+    render(<FrameCalcApp />);
+
+    const historyButton = await screen.findByRole("button", {
+      name: "전체 3600mm · 간격 5개 · 두께 38mm",
+    });
+
+    await user.click(historyButton);
+
+    expect(screen.getByLabelText("난간 전체 길이")).toHaveValue("3600");
+    expect(screen.getByLabelText("난간살 사이의 개수")).toHaveValue("5");
+    expect(screen.getByLabelText("난간 두께")).toHaveValue("38");
+  });
+
+  it("migrates legacy v2 history entries stored in meters into millimeters", async () => {
+    window.localStorage.setItem(
+      "framecalc-history-v2",
+      serializeHistoryEntries([
+        {
+          id: "legacy-history-1",
           savedAtMillis: Date.UTC(2026, 2, 28, 10, 30),
           snapshot: {
             totalLengthInput: "3.6",
@@ -63,17 +93,16 @@ describe("FrameCalcApp", () => {
     render(<FrameCalcApp />);
 
     const historyButton = await screen.findByRole("button", {
-      name: "전체 3.6m · 간격 5개 · 두께 38mm",
+      name: "전체 3600mm · 간격 5개 · 두께 38mm",
     });
 
     await user.click(historyButton);
 
-    expect(screen.getByLabelText("난간 전체 길이")).toHaveValue("3.6");
-    expect(screen.getByLabelText("난간살 사이의 개수")).toHaveValue("5");
+    expect(screen.getByLabelText("난간 전체 길이")).toHaveValue("3600");
     expect(screen.getByLabelText("난간 두께")).toHaveValue("38");
   });
 
-  it("ignores legacy v1 history entries stored under the old key", () => {
+  it("ignores legacy v1 history entries stored under the older key", () => {
     window.localStorage.setItem(
       "framecalc-history-v1",
       serializeHistoryEntries([
@@ -83,7 +112,7 @@ describe("FrameCalcApp", () => {
           snapshot: {
             totalLengthInput: "3.6",
             gapCountInput: "5",
-            thicknessInput: "0.038",
+            thicknessInput: "38",
           },
         },
       ]),
@@ -103,7 +132,7 @@ describe("FrameCalcApp", () => {
             id: `history-${index}`,
             savedAtMillis: Date.UTC(2026, 2, 28, 10, index),
             snapshot: {
-              totalLengthInput: (10 + index).toString(),
+              totalLengthInput: ((10 + index) * 100).toString(),
               gapCountInput: "5",
               thicknessInput: "38",
             },
@@ -115,13 +144,13 @@ describe("FrameCalcApp", () => {
     render(<FrameCalcApp />);
 
     const historyButtons = screen.getAllByRole("button", {
-      name: /^전체 \d+m · 간격 5개 · 두께 38mm$/,
+      name: /^전체 \d+mm · 간격 5개 · 두께 38mm$/,
     });
 
     expect(historyButtons).toHaveLength(MAX_HISTORY_ENTRIES);
     expect(
       screen.queryByRole("button", {
-        name: "전체 20m · 간격 5개 · 두께 38mm",
+        name: "전체 2000mm · 간격 5개 · 두께 38mm",
       }),
     ).not.toBeInTheDocument();
   });
@@ -134,7 +163,7 @@ describe("FrameCalcApp", () => {
           id: "history-1",
           savedAtMillis: Date.UTC(2026, 2, 28, 10, 30),
           snapshot: {
-            totalLengthInput: "3.6",
+            totalLengthInput: "3600",
             gapCountInput: "5",
             thicknessInput: "38",
           },
@@ -147,11 +176,25 @@ describe("FrameCalcApp", () => {
 
     await user.click(
       screen.getByRole("button", {
-        name: "전체 3.6m · 간격 5개 · 두께 38mm 삭제 버튼",
+        name: "전체 3600mm · 간격 5개 · 두께 38mm 삭제 버튼",
       }),
     );
 
     expect(screen.getByText("저장된 계산 기록이 없습니다.")).toBeInTheDocument();
     expect(parseHistoryEntries(window.localStorage.getItem(HISTORY_STORAGE_KEY))).toEqual([]);
+  });
+
+  it("prevents decimal paste in millimeter inputs", () => {
+    render(<FrameCalcApp />);
+
+    const input = screen.getByLabelText("난간 전체 길이");
+
+    fireEvent.paste(input, {
+      clipboardData: {
+        getData: () => "12.5",
+      },
+    });
+
+    expect(input).toHaveValue("");
   });
 });

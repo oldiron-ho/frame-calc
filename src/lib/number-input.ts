@@ -3,6 +3,10 @@ const STRICT_INT_PATTERN = /^[+-]?\d+$/;
 
 export const MILLIMETERS_PER_METER = 1000;
 
+export function sanitizeDigitsOnlyInput(value: string): string {
+  return value.replace(/\D+/g, "");
+}
+
 export function normalizeDecimalInput(value: string): string {
   return value.trim().replaceAll(",", ".");
 }
@@ -37,10 +41,6 @@ export function parseStrictInt(value: string): number | null {
 
   const parsed = Number(normalized);
   return Number.isInteger(parsed) ? parsed : null;
-}
-
-export function millimetersToMeters(value: number): number {
-  return value / MILLIMETERS_PER_METER;
 }
 
 export function metersToMillimeters(value: number): number {

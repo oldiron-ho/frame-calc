@@ -1,15 +1,14 @@
 import { calculateRailLayout, type RailLayoutResult } from "@/lib/rail-calculator";
 import {
-  millimetersToMeters,
-  normalizeDecimalInput,
   parseDecimalInput,
   parseStrictInt,
-  toCanonicalDecimalInput,
+  metersToMillimeters,
 } from "@/lib/number-input";
 
-export const HISTORY_STORAGE_KEY = "framecalc-history-v2";
+export const HISTORY_STORAGE_KEY = "framecalc-history-v3";
 export const MAX_HISTORY_ENTRIES = 10;
 const HISTORY_STORAGE_EVENT = "framecalc-history-sync";
+const LEGACY_HISTORY_STORAGE_KEYS = ["framecalc-history-v2"] as const;
 const EMPTY_HISTORY_ENTRIES: CalculationHistoryEntry[] = [];
 
 let cachedSerializedHistoryEntries: string | null | undefined;
@@ -40,9 +39,9 @@ export function createCalculationHistorySnapshot(inputs: {
   gapCountInput: string;
   thicknessInput: string;
 }): CalculationHistorySnapshot | null {
-  const normalizedTotalLengthInput = normalizeDecimalInput(inputs.totalLengthInput);
+  const normalizedTotalLengthInput = inputs.totalLengthInput.trim();
   const normalizedGapCountInput = inputs.gapCountInput.trim();
-  const normalizedThicknessInput = normalizeDecimalInput(inputs.thicknessInput);
+  const normalizedThicknessInput = inputs.thicknessInput.trim();
 
   if (
     normalizedTotalLengthInput.length === 0 ||
@@ -52,9 +51,9 @@ export function createCalculationHistorySnapshot(inputs: {
     return null;
   }
 
-  const totalLength = parseDecimalInput(normalizedTotalLengthInput);
+  const totalLength = parseStrictInt(normalizedTotalLengthInput);
   const gapCount = parseStrictInt(normalizedGapCountInput);
-  const thicknessInMillimeters = parseDecimalInput(normalizedThicknessInput);
+  const thicknessInMillimeters = parseStrictInt(normalizedThicknessInput);
 
   if (
     totalLength === null ||
@@ -65,9 +64,9 @@ export function createCalculationHistorySnapshot(inputs: {
   }
 
   const snapshot = {
-    totalLengthInput: toCanonicalDecimalInput(totalLength),
+    totalLengthInput: totalLength.toString(),
     gapCountInput: gapCount.toString(),
-    thicknessInput: toCanonicalDecimalInput(thicknessInMillimeters),
+    thicknessInput: thicknessInMillimeters.toString(),
   };
 
   return snapshotToLayoutResultOrNull(snapshot) === null ? null : snapshot;
@@ -76,9 +75,9 @@ export function createCalculationHistorySnapshot(inputs: {
 export function snapshotToLayoutResultOrNull(
   snapshot: CalculationHistorySnapshot,
 ): RailLayoutResult | null {
-  const totalLength = parseDecimalInput(snapshot.totalLengthInput);
+  const totalLength = parseStrictInt(snapshot.totalLengthInput);
   const gapCount = parseStrictInt(snapshot.gapCountInput);
-  const thicknessInMillimeters = parseDecimalInput(snapshot.thicknessInput);
+  const thicknessInMillimeters = parseStrictInt(snapshot.thicknessInput);
 
   if (
     totalLength === null ||
@@ -89,11 +88,7 @@ export function snapshotToLayoutResultOrNull(
   }
 
   try {
-    return calculateRailLayout(
-      totalLength,
-      gapCount,
-      millimetersToMeters(thicknessInMillimeters),
-    );
+    return calculateRailLayout(totalLength, gapCount, thicknessInMillimeters);
   } catch {
     return null;
   }
@@ -176,7 +171,7 @@ export function loadHistoryEntries(storage: Pick<Storage, "getItem"> | null | un
     return [];
   }
 
-  return parseHistoryEntries(storage.getItem(HISTORY_STORAGE_KEY));
+  return loadHistoryEntriesFromStorage(storage);
 }
 
 export function persistHistoryEntries(
@@ -188,7 +183,10 @@ export function persistHistoryEntries(
   }
 
   const serializedEntries = serializeHistoryEntries(entries);
-  cachedSerializedHistoryEntries = serializedEntries;
+  cachedSerializedHistoryEntries = getSerializedCacheKey({
+    serializedEntries,
+    isLegacy: false,
+  });
   cachedHistoryEntriesSnapshot = entries;
   storage.setItem(HISTORY_STORAGE_KEY, serializedEntries);
 }
@@ -218,13 +216,16 @@ export function getClientHistoryEntriesSnapshot(): CalculationHistoryEntry[] {
     return EMPTY_HISTORY_ENTRIES;
   }
 
-  const serializedEntries = window.localStorage.getItem(HISTORY_STORAGE_KEY);
+  const source = getHistoryStorageSource(window.localStorage);
+  const serializedEntries = getSerializedCacheKey(source);
   if (serializedEntries === cachedSerializedHistoryEntries) {
     return cachedHistoryEntriesSnapshot;
   }
 
   cachedSerializedHistoryEntries = serializedEntries;
-  cachedHistoryEntriesSnapshot = parseHistoryEntries(serializedEntries);
+  cachedHistoryEntriesSnapshot = source.isLegacy
+    ? parseLegacyHistoryEntries(source.serializedEntries)
+    : parseHistoryEntries(source.serializedEntries);
   return cachedHistoryEntriesSnapshot;
 }
 
@@ -257,4 +258,110 @@ function createHistoryId(): string {
   }
 
   return `history-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function loadHistoryEntriesFromStorage(storage: Pick<Storage, "getItem">): CalculationHistoryEntry[] {
+  const source = getHistoryStorageSource(storage);
+  return source.isLegacy
+    ? parseLegacyHistoryEntries(source.serializedEntries)
+    : parseHistoryEntries(source.serializedEntries);
+}
+
+function getHistoryStorageSource(storage: Pick<Storage, "getItem">): {
+  serializedEntries: string | null;
+  isLegacy: boolean;
+} {
+  const currentEntries = storage.getItem(HISTORY_STORAGE_KEY);
+  if (currentEntries !== null) {
+    return {
+      serializedEntries: currentEntries,
+      isLegacy: false,
+    };
+  }
+
+  for (const legacyKey of LEGACY_HISTORY_STORAGE_KEYS) {
+    const legacyEntries = storage.getItem(legacyKey);
+    if (legacyEntries !== null) {
+      return {
+        serializedEntries: legacyEntries,
+        isLegacy: true,
+      };
+    }
+  }
+
+  return {
+    serializedEntries: null,
+    isLegacy: false,
+  };
+}
+
+function getSerializedCacheKey(source: {
+  serializedEntries: string | null;
+  isLegacy: boolean;
+}): string {
+  return `${source.isLegacy ? "legacy" : "current"}:${source.serializedEntries ?? ""}`;
+}
+
+function parseLegacyHistoryEntries(
+  serializedEntries: string | null | undefined,
+): CalculationHistoryEntry[] {
+  if (serializedEntries == null || serializedEntries.trim().length === 0) {
+    return [];
+  }
+
+  try {
+    const parsed = JSON.parse(serializedEntries);
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
+
+    return parsed.flatMap((entry): CalculationHistoryEntry[] => {
+      if (
+        typeof entry !== "object" ||
+        entry === null ||
+        typeof entry.id !== "string" ||
+        typeof entry.savedAtMillis !== "number" ||
+        typeof entry.snapshot !== "object" ||
+        entry.snapshot === null
+      ) {
+        return [];
+      }
+
+      const totalLengthInMeters = parseDecimalInput(
+        String((entry.snapshot as Record<string, unknown>).totalLengthInput ?? ""),
+      );
+      const gapCount = parseStrictInt(
+        String((entry.snapshot as Record<string, unknown>).gapCountInput ?? ""),
+      );
+      const thicknessInMillimeters = parseDecimalInput(
+        String((entry.snapshot as Record<string, unknown>).thicknessInput ?? ""),
+      );
+
+      if (
+        totalLengthInMeters === null ||
+        gapCount === null ||
+        thicknessInMillimeters === null
+      ) {
+        return [];
+      }
+
+      const snapshot = createCalculationHistorySnapshot({
+        totalLengthInput: Math.round(metersToMillimeters(totalLengthInMeters)).toString(),
+        gapCountInput: gapCount.toString(),
+        thicknessInput: Math.round(thicknessInMillimeters).toString(),
+      });
+
+      return snapshot === null
+        ? []
+        : [
+            {
+              id: entry.id,
+              savedAtMillis: entry.savedAtMillis,
+              snapshot,
+            },
+          ];
+    });
+  } catch {
+    return [];
+  }
 }
