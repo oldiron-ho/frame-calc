@@ -8,7 +8,7 @@ import {
 } from "@/lib/number-input";
 
 export const HISTORY_STORAGE_KEY = "framecalc-history-v2";
-export const MAX_HISTORY_ENTRIES = 20;
+export const MAX_HISTORY_ENTRIES = 10;
 const HISTORY_STORAGE_EVENT = "framecalc-history-sync";
 const EMPTY_HISTORY_ENTRIES: CalculationHistoryEntry[] = [];
 
