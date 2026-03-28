@@ -26,25 +26,3 @@ npm run lint
 npm run test
 npm run build
 ```
-
-## GitHub 업로드
-
-현재 프로젝트 루트는 아직 Git 저장소가 아닐 수 있습니다. 그런 경우 루트에서 아래 순서로 진행합니다.
-
-```bash
-git init
-git add .
-git commit -m "Add FrameCalc Next.js web app"
-git branch -M main
-git remote add origin <YOUR_GITHUB_REPO_URL>
-git push -u origin main
-```
-
-## Vercel 배포
-
-1. GitHub 저장소를 Vercel에 import 합니다.
-2. Root Directory를 `web`으로 지정합니다.
-3. Framework Preset은 `Next.js`를 사용합니다.
-4. 별도 환경변수 없이 바로 배포합니다.
-
-배포 후 모바일 기기에서 첫 화면, 입력 동작, 이력 저장 동작을 바로 확인하면 됩니다.
