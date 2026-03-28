@@ -274,4 +274,28 @@ describe("FrameCalcApp", () => {
 
     expect(input).toHaveValue("");
   });
+
+  it("rounds rail table positions to whole millimeters while keeping gap summary decimals", () => {
+    render(<FrameCalcApp />);
+
+    fireEvent.change(screen.getByLabelText("난간 전체 길이"), {
+      target: { value: "3600" },
+    });
+    fireEvent.change(screen.getByLabelText("난간살 사이의 개수"), {
+      target: { value: "5" },
+    });
+    fireEvent.change(screen.getByLabelText("난간 두께"), {
+      target: { value: "38" },
+    });
+
+    expect(screen.getByText("674.4")).toBeInTheDocument();
+    expect(screen.getAllByText("1,425mm")).toHaveLength(1);
+    expect(screen.getAllByText("1,463mm")).toHaveLength(1);
+    expect(screen.getAllByText("1,425")).toHaveLength(1);
+    expect(screen.getAllByText("1,463")).toHaveLength(1);
+    expect(screen.queryByText("1,424.8mm")).not.toBeInTheDocument();
+    expect(screen.queryByText("1,462.8mm")).not.toBeInTheDocument();
+    expect(screen.queryByText("1,424.8")).not.toBeInTheDocument();
+    expect(screen.queryByText("1,462.8")).not.toBeInTheDocument();
+  });
 });

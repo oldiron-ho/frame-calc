@@ -26,6 +26,7 @@ import {
 import {
   formatInputSummary,
   formatMillimeters,
+  formatRoundedMillimeters,
 } from "@/lib/format";
 import { sanitizeDigitsOnlyInput } from "@/lib/number-input";
 import { buildCalculatorUiState } from "@/lib/ui-state";
@@ -332,13 +333,13 @@ function ResultsSection(props: {
                 <div className="rounded-2xl bg-[rgba(239,225,206,0.72)] px-3 py-3">
                   <dt className="text-[var(--muted)]">시작 위치</dt>
                   <dd className="font-display mt-1 text-base font-bold text-[var(--accent-deep)]">
-                    {formatMillimeters(position.start)}mm
+                    {formatRoundedMillimeters(position.start)}mm
                   </dd>
                 </div>
                 <div className="rounded-2xl bg-[rgba(239,225,206,0.72)] px-3 py-3">
                   <dt className="text-[var(--muted)]">끝 위치</dt>
                   <dd className="font-display mt-1 text-base font-bold text-[var(--accent-deep)]">
-                    {formatMillimeters(position.end)}mm
+                    {formatRoundedMillimeters(position.end)}mm
                   </dd>
                 </div>
               </dl>
@@ -360,8 +361,8 @@ function ResultsSection(props: {
               className="grid grid-cols-[0.9fr_1.2fr_1.2fr] border-t border-[rgba(112,72,42,0.08)] bg-[rgba(255,255,255,0.56)] px-4 py-3 text-sm"
             >
               <div className="font-medium">{position.index}번</div>
-              <div className="text-right font-medium">{formatMillimeters(position.start)}</div>
-              <div className="text-right font-medium">{formatMillimeters(position.end)}</div>
+              <div className="text-right font-medium">{formatRoundedMillimeters(position.start)}</div>
+              <div className="text-right font-medium">{formatRoundedMillimeters(position.end)}</div>
             </div>
           );
         })}

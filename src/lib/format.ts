@@ -4,6 +4,12 @@ export function formatMillimeters(value: number): string {
   }).format(value);
 }
 
+export function formatRoundedMillimeters(value: number): string {
+  return new Intl.NumberFormat("ko-KR", {
+    maximumFractionDigits: 0,
+  }).format(Math.round(value));
+}
+
 export function formatHistoryDateTime(savedAtMillis: number): string {
   return new Intl.DateTimeFormat("ko-KR", {
     dateStyle: "short",
