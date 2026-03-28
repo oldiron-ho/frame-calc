@@ -2,12 +2,9 @@
 
 import {
   useEffect,
-  useRef,
   useState,
   useSyncExternalStore,
   type HTMLAttributes,
-  type MouseEvent,
-  type PointerEvent,
 } from "react";
 
 import {
@@ -31,9 +28,6 @@ import {
 import { buildCalculatorUiState } from "@/lib/ui-state";
 
 const AUTO_SAVE_DELAY_MILLIS = 500;
-const HISTORY_SWIPE_REVEAL_PX = 88;
-const HISTORY_SWIPE_OPEN_THRESHOLD_PX = 52;
-const HISTORY_SWIPE_SLOP_PX = 8;
 
 export function FrameCalcApp() {
   const [totalLengthInput, setTotalLengthInput] = useState("");
@@ -396,8 +390,7 @@ function HistorySection(props: {
       <div className="mb-4">
         <h2 className="text-lg font-semibold tracking-[-0.02em]">최근 실행 기록</h2>
         <p className="mt-1 text-sm leading-6 text-[var(--muted)]">
-          항목을 누르면 다시 불러옵니다. 모바일에서는 밀어서, 데스크톱에서는
-          우측 × 버튼으로 삭제할 수 있습니다.
+          항목을 누르면 다시 불러옵니다. 삭제는 우측 × 버튼으로 할 수 있습니다.
         </p>
       </div>
 
@@ -428,157 +421,26 @@ function HistoryListItem(props: {
   onSelect: (entry: CalculationHistoryEntry) => void;
   onDelete: (entry: CalculationHistoryEntry) => void;
 }) {
-  const [isDragging, setIsDragging] = useState(false);
-  const [isSwipeOpen, setIsSwipeOpen] = useState(false);
-  const [swipeOffset, setSwipeOffset] = useState(0);
-  const pointerIdRef = useRef<number | null>(null);
-  const startXRef = useRef(0);
-  const startOffsetRef = useRef(0);
-  const hasDraggedRef = useRef(false);
-  const suppressClickRef = useRef(false);
-  const swipeOffsetRef = useRef(0);
-
-  function setSwipePosition(nextOffset: number): void {
-    swipeOffsetRef.current = nextOffset;
-    setSwipeOffset(nextOffset);
-  }
-
-  function snapSwipe(open: boolean): void {
-    setIsSwipeOpen(open);
-    setSwipePosition(open ? -HISTORY_SWIPE_REVEAL_PX : 0);
-  }
-
-  function finishSwipe(
-    event: PointerEvent<HTMLButtonElement>,
-    forceClosed: boolean = false,
-  ): void {
-    if (pointerIdRef.current !== event.pointerId) {
-      return;
-    }
-
-    if (
-      typeof event.currentTarget.hasPointerCapture === "function" &&
-      event.currentTarget.hasPointerCapture(event.pointerId) &&
-      typeof event.currentTarget.releasePointerCapture === "function"
-    ) {
-      event.currentTarget.releasePointerCapture(event.pointerId);
-    }
-
-    pointerIdRef.current = null;
-    setIsDragging(false);
-
-    if (forceClosed) {
-      snapSwipe(false);
-      return;
-    }
-
-    snapSwipe(swipeOffsetRef.current <= -HISTORY_SWIPE_OPEN_THRESHOLD_PX);
-  }
-
-  function handlePointerDown(event: PointerEvent<HTMLButtonElement>): void {
-    if (event.pointerType === "mouse") {
-      return;
-    }
-
-    pointerIdRef.current = event.pointerId;
-    startXRef.current = event.clientX;
-    startOffsetRef.current = isSwipeOpen ? -HISTORY_SWIPE_REVEAL_PX : 0;
-    hasDraggedRef.current = false;
-    setIsDragging(true);
-    if (typeof event.currentTarget.setPointerCapture === "function") {
-      event.currentTarget.setPointerCapture(event.pointerId);
-    }
-  }
-
-  function handlePointerMove(event: PointerEvent<HTMLButtonElement>): void {
-    if (pointerIdRef.current !== event.pointerId) {
-      return;
-    }
-
-    const nextOffset = clampValue(
-      startOffsetRef.current + event.clientX - startXRef.current,
-      -HISTORY_SWIPE_REVEAL_PX,
-      0,
-    );
-
-    if (Math.abs(nextOffset - startOffsetRef.current) >= HISTORY_SWIPE_SLOP_PX) {
-      hasDraggedRef.current = true;
-      suppressClickRef.current = true;
-    }
-
-    if (!hasDraggedRef.current) {
-      return;
-    }
-
-    setSwipePosition(nextOffset);
-  }
-
-  function handlePointerUp(event: PointerEvent<HTMLButtonElement>): void {
-    finishSwipe(event);
-  }
-
-  function handlePointerCancel(event: PointerEvent<HTMLButtonElement>): void {
-    finishSwipe(event, true);
-  }
-
-  function handleSelect(event: MouseEvent<HTMLButtonElement>): void {
-    if (suppressClickRef.current) {
-      suppressClickRef.current = false;
-      event.preventDefault();
-      return;
-    }
-
-    if (isSwipeOpen) {
-      snapSwipe(false);
-      return;
-    }
-
-    props.onSelect(props.entry);
-  }
-
   return (
     <article className="relative overflow-hidden rounded-[1.3rem] border border-[rgba(112,72,42,0.08)] bg-[rgba(255,255,255,0.68)] shadow-[0_10px_24px_rgba(117,72,39,0.06)]">
-      <div className="absolute inset-y-0 right-0 flex items-stretch md:hidden">
-        <button
-          type="button"
-          aria-label={`${formatInputSummary(props.entry.snapshot)} 밀어서 삭제`}
-          onClick={() => {
-            props.onDelete(props.entry);
-          }}
-          className="flex w-[5.5rem] items-center justify-center bg-[#a74120] px-4 text-sm font-semibold text-white"
-        >
-          삭제
-        </button>
-      </div>
-
       <button
         type="button"
         aria-label={formatInputSummary(props.entry.snapshot)}
-        onClick={handleSelect}
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUp}
-        onPointerCancel={handlePointerCancel}
-        className={`relative flex w-full items-center gap-3 px-4 py-3 text-left [touch-action:pan-y] md:pr-14 ${
-          isDragging ? "" : "transition-transform duration-200 ease-out"
-        }`}
-        style={{
-          transform: `translateX(${swipeOffset}px)`,
+        onClick={() => {
+          props.onSelect(props.entry);
         }}
+        className="relative flex w-full items-center gap-3 px-4 py-3 pr-14 text-left transition"
       >
         <span className="min-w-0 flex-1 truncate text-sm font-semibold tracking-[-0.02em]">
           {formatInputSummary(props.entry.snapshot)}
         </span>
       </button>
 
-      <div className="absolute inset-y-0 right-2 hidden items-center md:flex">
+      <div className="absolute inset-y-0 right-2 flex items-center">
         <button
           type="button"
           aria-label={`${formatInputSummary(props.entry.snapshot)} 삭제 버튼`}
           onClick={() => {
-            if (isSwipeOpen) {
-              snapSwipe(false);
-            }
             props.onDelete(props.entry);
           }}
           className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[rgba(167,43,16,0.12)] bg-[rgba(255,244,240,0.92)] text-lg leading-none text-[#8f3d1f] transition hover:bg-[rgba(255,232,225,1)]"
@@ -588,8 +450,4 @@ function HistoryListItem(props: {
       </div>
     </article>
   );
-}
-
-function clampValue(value: number, min: number, max: number): number {
-  return Math.min(Math.max(value, min), max);
 }

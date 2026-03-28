@@ -126,7 +126,7 @@ describe("FrameCalcApp", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("deletes a history entry from the desktop button", async () => {
+  it("deletes a history entry from the visible x button", async () => {
     window.localStorage.setItem(
       HISTORY_STORAGE_KEY,
       serializeHistoryEntries([
@@ -153,48 +153,5 @@ describe("FrameCalcApp", () => {
 
     expect(screen.getByText("저장된 계산 기록이 없습니다.")).toBeInTheDocument();
     expect(parseHistoryEntries(window.localStorage.getItem(HISTORY_STORAGE_KEY))).toEqual([]);
-  });
-
-  it("reveals swipe delete on touch drag", () => {
-    window.localStorage.setItem(
-      HISTORY_STORAGE_KEY,
-      serializeHistoryEntries([
-        {
-          id: "history-1",
-          savedAtMillis: Date.UTC(2026, 2, 28, 10, 30),
-          snapshot: {
-            totalLengthInput: "3.6",
-            gapCountInput: "5",
-            thicknessInput: "38",
-          },
-        },
-      ]),
-    );
-
-    render(<FrameCalcApp />);
-
-    const historyButton = screen.getByRole("button", {
-      name: "전체 3.6m · 간격 5개 · 두께 38mm",
-    });
-
-    fireEvent.pointerDown(historyButton, {
-      clientX: 180,
-      pointerId: 1,
-      pointerType: "touch",
-    });
-    fireEvent.pointerMove(historyButton, {
-      clientX: 96,
-      pointerId: 1,
-      pointerType: "touch",
-    });
-    fireEvent.pointerUp(historyButton, {
-      clientX: 96,
-      pointerId: 1,
-      pointerType: "touch",
-    });
-
-    expect(historyButton).toHaveStyle({
-      transform: "translateX(-88px)",
-    });
   });
 });
