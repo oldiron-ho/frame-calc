@@ -4,6 +4,9 @@ import {
   type ClipboardEvent,
   type FormEvent,
   type KeyboardEvent,
+  type RefObject,
+  useEffect,
+  useRef,
   useState,
   useSyncExternalStore,
   type HTMLAttributes,
@@ -39,6 +42,8 @@ export function FrameCalcApp() {
   const [gapCountInput, setGapCountInput] = useState("");
   const [thicknessInput, setThicknessInput] = useState("");
   const [lastSavedSignature, setLastSavedSignature] = useState<string | null>(null);
+  const [shouldScrollToResults, setShouldScrollToResults] = useState(false);
+  const resultsSectionRef = useRef<HTMLElement | null>(null);
   const historyEntries = useSyncExternalStore(
     subscribeToHistoryEntries,
     getClientHistoryEntriesSnapshot,
@@ -61,6 +66,27 @@ export function FrameCalcApp() {
     uiState.kind === "ready" && currentSnapshot !== null
       ? getSnapshotSignature(currentSnapshot)
       : null;
+
+  useEffect(() => {
+    if (!shouldScrollToResults || uiState.kind !== "ready") {
+      return;
+    }
+
+    const resultsSection = resultsSectionRef.current;
+    if (
+      resultsSection === null ||
+      typeof resultsSection.scrollIntoView !== "function"
+    ) {
+      setShouldScrollToResults(false);
+      return;
+    }
+
+    resultsSection.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+    setShouldScrollToResults(false);
+  }, [shouldScrollToResults, uiState.kind]);
 
   function saveCurrentSnapshotIfNeeded(): void {
     if (currentSnapshot === null || readySignature === null) {
@@ -85,6 +111,7 @@ export function FrameCalcApp() {
     setTotalLengthInput(entry.snapshot.totalLengthInput);
     setGapCountInput(entry.snapshot.gapCountInput);
     setThicknessInput(entry.snapshot.thicknessInput);
+    setShouldScrollToResults(true);
   }
 
   function handleDeleteHistory(entry: CalculationHistoryEntry): void {
@@ -168,7 +195,10 @@ export function FrameCalcApp() {
         {uiState.kind === "ready" ? (
           <>
             <SummarySection railCount={uiState.layout.railCount} gapSize={uiState.layout.gapSize} />
-            <ResultsSection positions={uiState.layout.positions} />
+            <ResultsSection
+              positions={uiState.layout.positions}
+              sectionRef={resultsSectionRef}
+            />
           </>
         ) : null}
 
@@ -307,9 +337,13 @@ function ResultsSection(props: {
     start: number;
     end: number;
   }>;
+  sectionRef: RefObject<HTMLElement | null>;
 }) {
   return (
-    <section className="panel rise-in mt-5 rounded-[2rem] p-5 [animation-delay:300ms]">
+    <section
+      ref={props.sectionRef}
+      className="panel rise-in mt-5 rounded-[2rem] p-5 [animation-delay:300ms]"
+    >
       <div className="mb-4 flex items-center justify-between gap-3">
         <div>
           <h2 className="text-lg font-semibold tracking-[-0.02em]">난간 시작 위치 테이블</h2>

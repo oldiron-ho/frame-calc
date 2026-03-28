@@ -118,6 +118,57 @@ describe("FrameCalcApp", () => {
     expect(screen.getByLabelText("난간 두께")).toHaveValue("38");
   });
 
+  it("scrolls to the results table when a saved history entry is selected", async () => {
+    const originalScrollIntoView = Element.prototype.scrollIntoView;
+    const scrollIntoView = vi.fn();
+
+    Object.defineProperty(Element.prototype, "scrollIntoView", {
+      configurable: true,
+      value: scrollIntoView,
+    });
+
+    try {
+      window.localStorage.setItem(
+        HISTORY_STORAGE_KEY,
+        serializeHistoryEntries([
+          {
+            id: "history-1",
+            savedAtMillis: Date.UTC(2026, 2, 28, 10, 30),
+            snapshot: {
+              totalLengthInput: "3600",
+              gapCountInput: "5",
+              thicknessInput: "38",
+            },
+          },
+        ]),
+      );
+
+      const user = userEvent.setup();
+      render(<FrameCalcApp />);
+
+      await user.click(
+        await screen.findByRole("button", {
+          name: "전체 3600mm · 간격 5개 · 두께 38mm",
+        }),
+      );
+
+      expect(screen.getByRole("heading", { name: "난간 시작 위치 테이블" })).toBeInTheDocument();
+      expect(scrollIntoView).toHaveBeenCalledWith({
+        behavior: "smooth",
+        block: "start",
+      });
+    } finally {
+      if (originalScrollIntoView === undefined) {
+        delete Element.prototype.scrollIntoView;
+      } else {
+        Object.defineProperty(Element.prototype, "scrollIntoView", {
+          configurable: true,
+          value: originalScrollIntoView,
+        });
+      }
+    }
+  });
+
   it("does not create a new history entry when an existing one is only restored", async () => {
     window.localStorage.setItem(
       HISTORY_STORAGE_KEY,
