@@ -140,9 +140,6 @@ export function FrameCalcApp() {
           </div>
           <div className="grid gap-4 sm:grid-cols-[1.3fr_0.7fr] sm:items-end">
             <div className="space-y-3">
-              <p className="text-sm font-medium text-[var(--muted)]">
-                현장에서 바로 확인하는 난간 배치 계산
-              </p>
               <h1 className="text-[clamp(2rem,8vw,3.4rem)] font-bold leading-none tracking-[-0.04em]">
                 난간 계산기
               </h1>
@@ -314,9 +311,6 @@ function ResultsSection(props: {
       <div className="mb-4 flex items-center justify-between gap-3">
         <div>
           <h2 className="text-lg font-semibold tracking-[-0.02em]">난간 시작 위치 테이블</h2>
-          <p className="mt-1 text-sm leading-6 text-[var(--muted)]">
-            모바일에서는 카드형으로, 넓은 화면에서는 표 형태로 확인할 수 있습니다.
-          </p>
         </div>
         <div className="rounded-full bg-[rgba(189,90,42,0.1)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--accent)]">
           {props.positions.length} Rails
@@ -390,7 +384,7 @@ function HistorySection(props: {
       <div className="mb-4">
         <h2 className="text-lg font-semibold tracking-[-0.02em]">최근 실행 기록</h2>
         <p className="mt-1 text-sm leading-6 text-[var(--muted)]">
-          항목을 누르면 다시 불러옵니다. 삭제는 우측 × 버튼으로 할 수 있습니다.
+          항목을 누르면 다시 불러옵니다.
         </p>
       </div>
 
@@ -429,21 +423,21 @@ function HistoryListItem(props: {
         onClick={() => {
           props.onSelect(props.entry);
         }}
-        className="relative flex w-full items-center gap-3 px-4 py-3 pr-14 text-left transition"
+        className="relative flex w-full items-center gap-3 px-4 py-3 pr-12 text-left transition"
       >
         <span className="min-w-0 flex-1 truncate text-sm font-semibold tracking-[-0.02em]">
           {formatInputSummary(props.entry.snapshot)}
         </span>
       </button>
 
-      <div className="absolute inset-y-0 right-2 flex items-center">
+      <div className="absolute inset-y-0 right-3 flex items-center">
         <button
           type="button"
           aria-label={`${formatInputSummary(props.entry.snapshot)} 삭제 버튼`}
           onClick={() => {
             props.onDelete(props.entry);
           }}
-          className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[rgba(167,43,16,0.12)] bg-[rgba(255,244,240,0.92)] text-lg leading-none text-[#8f3d1f] transition hover:bg-[rgba(255,232,225,1)]"
+          className="inline-flex h-8 w-8 items-center justify-center rounded-full text-[1.05rem] leading-none text-[var(--muted)] opacity-72 transition-[background-color,color,opacity,box-shadow] hover:bg-[rgba(125,53,21,0.08)] hover:text-[var(--accent-deep)] hover:opacity-100 focus-visible:bg-[rgba(125,53,21,0.1)] focus-visible:text-[var(--accent-deep)] focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(125,53,21,0.16)]"
         >
           <span aria-hidden="true">×</span>
         </button>
