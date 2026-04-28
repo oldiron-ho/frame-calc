@@ -23,6 +23,22 @@ describe("calculateRailLayout", () => {
     expect(result.positions[5].end).toBeCloseTo(3600, 10);
   });
 
+  it("calculates evenly spaced internal rails without end rails", () => {
+    const result = calculateRailLayout(3600, 5, 38, "without-ends");
+
+    expect(result.railCount).toBe(4);
+    expect(result.gapSize).toBeCloseTo(689.6, 10);
+    expect(result.positions).toHaveLength(4);
+    expect(result.positions[0]).toEqual({
+      index: 1,
+      start: 689.6,
+      end: 727.6,
+    });
+    expect(result.positions[3].index).toBe(4);
+    expect(result.positions[3].start).toBeCloseTo(2872.4, 10);
+    expect(result.positions[3].end).toBeCloseTo(2910.4, 10);
+  });
+
   it.each([
     [0, 5, 38, RailLayoutValidationError.TotalLengthMustBePositive],
     [3600, 0, 38, RailLayoutValidationError.GapCountMustBeAtLeastOne],
@@ -31,6 +47,14 @@ describe("calculateRailLayout", () => {
   ])("throws the right validation error for %j", (totalLength, gapCount, thickness, error) => {
     expect(() => calculateRailLayout(totalLength, gapCount, thickness)).toThrowError(
       new RailLayoutCalculationError(error),
+    );
+  });
+
+  it("requires at least two gaps when end rails are omitted", () => {
+    expect(() => calculateRailLayout(3600, 1, 38, "without-ends")).toThrowError(
+      new RailLayoutCalculationError(
+        RailLayoutValidationError.GapCountMustBeAtLeastTwoWithoutEnds,
+      ),
     );
   });
 });

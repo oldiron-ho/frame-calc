@@ -73,4 +73,21 @@ describe("buildCalculatorUiState", () => {
     expect(state.layout.railCount).toBe(6);
     expect(state.layout.positions).toHaveLength(6);
   });
+
+  it("uses the no-end-rails layout mode when requested", () => {
+    const state = buildCalculatorUiState({
+      totalLengthInput: "3600",
+      gapCountInput: "5",
+      thicknessInput: "38",
+      endRailMode: "without-ends",
+    });
+
+    expect(state.kind).toBe("ready");
+    if (state.kind !== "ready") {
+      throw new Error("expected ready state");
+    }
+
+    expect(state.layout.railCount).toBe(4);
+    expect(state.layout.positions[0]?.start).toBeCloseTo(689.6, 10);
+  });
 });

@@ -21,8 +21,11 @@ export function formatInputSummary(input: {
   totalLengthInput: string;
   gapCountInput: string;
   thicknessInput: string;
+  endRailMode?: "with-ends" | "without-ends";
 }): string {
-  return `전체 ${input.totalLengthInput}mm · 간격 ${input.gapCountInput}개 · 두께 ${input.thicknessInput}mm`;
+  const endRailModeLabel =
+    input.endRailMode === "without-ends" ? "끝단 없음" : "끝단 있음";
+  return `전체 ${input.totalLengthInput}mm · 간격 ${input.gapCountInput}개 · 두께 ${input.thicknessInput}mm · ${endRailModeLabel}`;
 }
 
 export function formatResultSummary(result: {

@@ -2,6 +2,7 @@ import {
   RailLayoutCalculationError,
   RailLayoutValidationError,
   calculateRailLayout,
+  type EndRailMode,
   type RailLayoutResult,
 } from "@/lib/rail-calculator";
 import {
@@ -22,6 +23,7 @@ const MESSAGES = {
   errorTitle: "입력을 확인하세요",
   invalidTotalLength: "전체 길이는 0보다 큰 정수(mm)로 입력하세요.",
   invalidGapCount: "간격 개수는 1 이상의 정수로 입력하세요.",
+  invalidGapCountWithoutEnds: "끝단 없음은 간격 개수를 2 이상으로 입력하세요.",
   invalidThickness: "난간 두께는 0보다 큰 정수(mm)로 입력하세요.",
   totalLengthTooShort: "전체 길이가 난간 두께 합보다 짧습니다.",
 } as const;
@@ -30,10 +32,12 @@ export function buildCalculatorUiState(input: {
   totalLengthInput: string;
   gapCountInput: string;
   thicknessInput: string;
+  endRailMode?: EndRailMode;
 }): CalculatorUiState {
   const totalLengthInput = input.totalLengthInput.trim();
   const gapCountInput = input.gapCountInput.trim();
   const thicknessInput = input.thicknessInput.trim();
+  const endRailMode = input.endRailMode ?? "with-ends";
 
   if (
     totalLengthInput.length === 0 &&
@@ -95,7 +99,12 @@ export function buildCalculatorUiState(input: {
   try {
     return {
       kind: "ready",
-      layout: calculateRailLayout(totalLength, gapCount, thicknessInMillimeters),
+      layout: calculateRailLayout(
+        totalLength,
+        gapCount,
+        thicknessInMillimeters,
+        endRailMode,
+      ),
     };
   } catch (error) {
     if (error instanceof RailLayoutCalculationError) {
@@ -117,6 +126,8 @@ function toErrorMessage(error: RailLayoutValidationError): string {
       return MESSAGES.invalidTotalLength;
     case RailLayoutValidationError.GapCountMustBeAtLeastOne:
       return MESSAGES.invalidGapCount;
+    case RailLayoutValidationError.GapCountMustBeAtLeastTwoWithoutEnds:
+      return MESSAGES.invalidGapCountWithoutEnds;
     case RailLayoutValidationError.ThicknessMustBePositive:
       return MESSAGES.invalidThickness;
     case RailLayoutValidationError.TotalLengthTooShort:

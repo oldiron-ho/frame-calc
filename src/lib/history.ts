@@ -1,4 +1,8 @@
-import { calculateRailLayout, type RailLayoutResult } from "@/lib/rail-calculator";
+import {
+  calculateRailLayout,
+  type EndRailMode,
+  type RailLayoutResult,
+} from "@/lib/rail-calculator";
 import {
   parseDecimalInput,
   parseStrictInt,
@@ -18,6 +22,7 @@ export interface CalculationHistorySnapshot {
   totalLengthInput: string;
   gapCountInput: string;
   thicknessInput: string;
+  endRailMode?: EndRailMode;
 }
 
 export interface CalculationHistoryEntry {
@@ -31,6 +36,7 @@ export function getSnapshotSignature(snapshot: CalculationHistorySnapshot): stri
     snapshot.totalLengthInput,
     snapshot.gapCountInput,
     snapshot.thicknessInput,
+    snapshot.endRailMode ?? "with-ends",
   ].join("|");
 }
 
@@ -38,10 +44,12 @@ export function createCalculationHistorySnapshot(inputs: {
   totalLengthInput: string;
   gapCountInput: string;
   thicknessInput: string;
+  endRailMode?: EndRailMode;
 }): CalculationHistorySnapshot | null {
   const normalizedTotalLengthInput = inputs.totalLengthInput.trim();
   const normalizedGapCountInput = inputs.gapCountInput.trim();
   const normalizedThicknessInput = inputs.thicknessInput.trim();
+  const endRailMode = inputs.endRailMode ?? "with-ends";
 
   if (
     normalizedTotalLengthInput.length === 0 ||
@@ -67,6 +75,7 @@ export function createCalculationHistorySnapshot(inputs: {
     totalLengthInput: totalLength.toString(),
     gapCountInput: gapCount.toString(),
     thicknessInput: thicknessInMillimeters.toString(),
+    endRailMode,
   };
 
   return snapshotToLayoutResultOrNull(snapshot) === null ? null : snapshot;
@@ -88,7 +97,12 @@ export function snapshotToLayoutResultOrNull(
   }
 
   try {
-    return calculateRailLayout(totalLength, gapCount, thicknessInMillimeters);
+    return calculateRailLayout(
+      totalLength,
+      gapCount,
+      thicknessInMillimeters,
+      snapshot.endRailMode ?? "with-ends",
+    );
   } catch {
     return null;
   }
@@ -149,6 +163,7 @@ export function parseHistoryEntries(serializedEntries: string | null | undefined
         totalLengthInput: String((entry.snapshot as Record<string, unknown>).totalLengthInput ?? ""),
         gapCountInput: String((entry.snapshot as Record<string, unknown>).gapCountInput ?? ""),
         thicknessInput: String((entry.snapshot as Record<string, unknown>).thicknessInput ?? ""),
+        endRailMode: parseEndRailMode((entry.snapshot as Record<string, unknown>).endRailMode),
       });
 
       return snapshot === null
@@ -349,6 +364,7 @@ function parseLegacyHistoryEntries(
         totalLengthInput: Math.round(metersToMillimeters(totalLengthInMeters)).toString(),
         gapCountInput: gapCount.toString(),
         thicknessInput: Math.round(thicknessInMillimeters).toString(),
+        endRailMode: "with-ends",
       });
 
       return snapshot === null
@@ -364,4 +380,8 @@ function parseLegacyHistoryEntries(
   } catch {
     return [];
   }
+}
+
+function parseEndRailMode(value: unknown): EndRailMode {
+  return value === "without-ends" ? "without-ends" : "with-ends";
 }

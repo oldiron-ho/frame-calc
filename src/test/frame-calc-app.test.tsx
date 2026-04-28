@@ -41,17 +41,18 @@ describe("FrameCalcApp", () => {
     expect(savedEntries).toHaveLength(1);
     expect(
       within(historySection).getByRole("button", {
-        name: "전체 3600mm · 간격 5개 · 두께 38mm",
+        name: "전체 3600mm · 간격 5개 · 두께 38mm · 끝단 있음",
       }),
     ).toBeInTheDocument();
     expect(within(historySection).getAllByText("전체(mm)")).toHaveLength(1);
     expect(within(historySection).getAllByText("간격(개)")).toHaveLength(1);
     expect(within(historySection).getAllByText("두께(mm)")).toHaveLength(1);
+    expect(within(historySection).getAllByText("끝단")).toHaveLength(1);
     expect(within(historySection).getByText("3600")).toBeInTheDocument();
     expect(within(historySection).getByText("5")).toBeInTheDocument();
     expect(within(historySection).getByText("38")).toBeInTheDocument();
     expect(
-      within(historySection).queryByText("전체 3600mm · 간격 5개 · 두께 38mm"),
+      within(historySection).queryByText("전체 3600mm · 간격 5개 · 두께 38mm · 끝단 있음"),
     ).not.toBeInTheDocument();
     expect(screen.queryByText(/저장 시각/)).not.toBeInTheDocument();
   });
@@ -85,6 +86,7 @@ describe("FrameCalcApp", () => {
       totalLengthInput: "3600",
       gapCountInput: "5",
       thicknessInput: "38",
+      endRailMode: "with-ends",
     });
   });
 
@@ -108,7 +110,7 @@ describe("FrameCalcApp", () => {
     render(<FrameCalcApp />);
 
     const historyButton = await screen.findByRole("button", {
-      name: "전체 3600mm · 간격 5개 · 두께 38mm",
+      name: "전체 3600mm · 간격 5개 · 두께 38mm · 끝단 있음",
     });
 
     await user.click(historyButton);
@@ -148,7 +150,7 @@ describe("FrameCalcApp", () => {
 
       await user.click(
         await screen.findByRole("button", {
-          name: "전체 3600mm · 간격 5개 · 두께 38mm",
+          name: "전체 3600mm · 간격 5개 · 두께 38mm · 끝단 있음",
         }),
       );
 
@@ -159,7 +161,7 @@ describe("FrameCalcApp", () => {
       });
     } finally {
       if (originalScrollIntoView === undefined) {
-        delete Element.prototype.scrollIntoView;
+        Reflect.deleteProperty(Element.prototype, "scrollIntoView");
       } else {
         Object.defineProperty(Element.prototype, "scrollIntoView", {
           configurable: true,
@@ -190,7 +192,7 @@ describe("FrameCalcApp", () => {
 
     await user.click(
       await screen.findByRole("button", {
-        name: "전체 3600mm · 간격 5개 · 두께 38mm",
+        name: "전체 3600mm · 간격 5개 · 두께 38mm · 끝단 있음",
       }),
     );
 
@@ -235,7 +237,7 @@ describe("FrameCalcApp", () => {
     render(<FrameCalcApp />);
 
     const historyButton = await screen.findByRole("button", {
-      name: "전체 3600mm · 간격 5개 · 두께 38mm",
+      name: "전체 3600mm · 간격 5개 · 두께 38mm · 끝단 있음",
     });
 
     await user.click(historyButton);
@@ -286,13 +288,13 @@ describe("FrameCalcApp", () => {
     render(<FrameCalcApp />);
 
     const historyButtons = screen.getAllByRole("button", {
-      name: /^전체 \d+mm · 간격 5개 · 두께 38mm$/,
+      name: /^전체 \d+mm · 간격 5개 · 두께 38mm · 끝단 있음$/,
     });
 
     expect(historyButtons).toHaveLength(MAX_HISTORY_ENTRIES);
     expect(
       screen.queryByRole("button", {
-        name: "전체 2000mm · 간격 5개 · 두께 38mm",
+        name: "전체 2000mm · 간격 5개 · 두께 38mm · 끝단 있음",
       }),
     ).not.toBeInTheDocument();
   });
@@ -318,7 +320,7 @@ describe("FrameCalcApp", () => {
 
     await user.click(
       screen.getByRole("button", {
-        name: "전체 3600mm · 간격 5개 · 두께 38mm 삭제 버튼",
+        name: "전체 3600mm · 간격 5개 · 두께 38mm · 끝단 있음 삭제 버튼",
       }),
     );
 
@@ -362,6 +364,34 @@ describe("FrameCalcApp", () => {
     expect(screen.queryByText("1,462.8mm")).not.toBeInTheDocument();
     expect(screen.queryByText("1,424.8")).not.toBeInTheDocument();
     expect(screen.queryByText("1,462.8")).not.toBeInTheDocument();
+  });
+
+  it("calculates internal rails when the no-end-rails option is selected", async () => {
+    const user = userEvent.setup();
+    render(<FrameCalcApp />);
+
+    await user.click(
+      screen.getByRole("checkbox", {
+        name: /끝단 없음/,
+      }),
+    );
+    fireEvent.change(screen.getByLabelText("난간 전체 길이"), {
+      target: { value: "3600" },
+    });
+    fireEvent.change(screen.getByLabelText("난간살 사이의 개수"), {
+      target: { value: "5" },
+    });
+    fireEvent.change(screen.getByLabelText("난간 두께"), {
+      target: { value: "38" },
+    });
+
+    expect(screen.getByText("689.6")).toBeInTheDocument();
+    expect(screen.getAllByText("690mm")).toHaveLength(1);
+    expect(screen.getAllByText("728mm")).toHaveLength(1);
+    expect(screen.getAllByText("2,872mm")).toHaveLength(1);
+    expect(screen.getAllByText("2,910mm")).toHaveLength(1);
+    expect(screen.queryByText("0mm")).not.toBeInTheDocument();
+    expect(screen.queryByText("3,600mm")).not.toBeInTheDocument();
   });
 });
 

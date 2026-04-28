@@ -104,6 +104,7 @@ describe("history helpers", () => {
       totalLengthInput: "3600",
       gapCountInput: "5",
       thicknessInput: "38",
+      endRailMode: "with-ends",
     });
   });
 });

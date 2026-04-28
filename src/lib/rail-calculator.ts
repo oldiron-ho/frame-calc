@@ -8,14 +8,18 @@ export interface RailLayoutResult {
   totalLength: number;
   gapCount: number;
   thickness: number;
+  endRailMode: EndRailMode;
   railCount: number;
   gapSize: number;
   positions: RailPosition[];
 }
 
+export type EndRailMode = "with-ends" | "without-ends";
+
 export enum RailLayoutValidationError {
   TotalLengthMustBePositive = "TotalLengthMustBePositive",
   GapCountMustBeAtLeastOne = "GapCountMustBeAtLeastOne",
+  GapCountMustBeAtLeastTwoWithoutEnds = "GapCountMustBeAtLeastTwoWithoutEnds",
   ThicknessMustBePositive = "ThicknessMustBePositive",
   TotalLengthTooShort = "TotalLengthTooShort",
 }
@@ -31,6 +35,7 @@ export function calculateRailLayout(
   totalLength: number,
   gapCount: number,
   thickness: number,
+  endRailMode: EndRailMode = "with-ends",
 ): RailLayoutResult {
   validate(totalLength > 0 && Number.isFinite(totalLength), () => {
     return RailLayoutValidationError.TotalLengthMustBePositive;
@@ -42,7 +47,11 @@ export function calculateRailLayout(
     return RailLayoutValidationError.ThicknessMustBePositive;
   });
 
-  const railCount = gapCount + 1;
+  validate(endRailMode === "with-ends" || gapCount >= 2, () => {
+    return RailLayoutValidationError.GapCountMustBeAtLeastTwoWithoutEnds;
+  });
+
+  const railCount = endRailMode === "with-ends" ? gapCount + 1 : gapCount - 1;
   const totalRailThickness = railCount * thickness;
 
   validate(totalRailThickness <= totalLength, () => {
@@ -52,7 +61,12 @@ export function calculateRailLayout(
   const gapSize = (totalLength - totalRailThickness) / gapCount;
   const step = thickness + gapSize;
   const positions = Array.from({ length: railCount }, (_, index) => {
-    const start = index === railCount - 1 ? totalLength - thickness : index * step;
+    const start =
+      endRailMode === "with-ends"
+        ? index === railCount - 1
+          ? totalLength - thickness
+          : index * step
+        : gapSize + index * step;
     return {
       index: index + 1,
       start,
@@ -64,6 +78,7 @@ export function calculateRailLayout(
     totalLength,
     gapCount,
     thickness,
+    endRailMode,
     railCount,
     gapSize,
     positions,

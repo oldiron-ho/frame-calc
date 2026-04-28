@@ -4,7 +4,7 @@ import {
   type ClipboardEvent,
   type FormEvent,
   type KeyboardEvent,
-  type RefObject,
+  useCallback,
   useEffect,
   useRef,
   useState,
@@ -33,17 +33,22 @@ import {
 } from "@/lib/format";
 import { sanitizeDigitsOnlyInput } from "@/lib/number-input";
 import { buildCalculatorUiState } from "@/lib/ui-state";
+import type { EndRailMode } from "@/lib/rail-calculator";
 
 const HISTORY_VALUE_GRID_CLASS_NAME =
-  "grid grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)_minmax(0,0.8fr)] gap-2";
+  "grid grid-cols-[minmax(0,1.1fr)_minmax(0,0.7fr)_minmax(0,0.7fr)_minmax(0,0.9fr)] gap-2";
 
 export function FrameCalcApp() {
   const [totalLengthInput, setTotalLengthInput] = useState("");
   const [gapCountInput, setGapCountInput] = useState("");
   const [thicknessInput, setThicknessInput] = useState("");
+  const [endRailMode, setEndRailMode] = useState<EndRailMode>("with-ends");
   const [lastSavedSignature, setLastSavedSignature] = useState<string | null>(null);
-  const [shouldScrollToResults, setShouldScrollToResults] = useState(false);
+  const [scrollRequestId, setScrollRequestId] = useState(0);
   const resultsSectionRef = useRef<HTMLElement | null>(null);
+  const setResultsSectionElement = useCallback((element: HTMLElement | null) => {
+    resultsSectionRef.current = element;
+  }, []);
   const historyEntries = useSyncExternalStore(
     subscribeToHistoryEntries,
     getClientHistoryEntriesSnapshot,
@@ -54,12 +59,14 @@ export function FrameCalcApp() {
     totalLengthInput,
     gapCountInput,
     thicknessInput,
+    endRailMode,
   });
 
   const currentSnapshot = createCalculationHistorySnapshot({
     totalLengthInput,
     gapCountInput,
     thicknessInput,
+    endRailMode,
   });
 
   const readySignature =
@@ -68,7 +75,7 @@ export function FrameCalcApp() {
       : null;
 
   useEffect(() => {
-    if (!shouldScrollToResults || uiState.kind !== "ready") {
+    if (scrollRequestId === 0 || uiState.kind !== "ready") {
       return;
     }
 
@@ -77,7 +84,6 @@ export function FrameCalcApp() {
       resultsSection === null ||
       typeof resultsSection.scrollIntoView !== "function"
     ) {
-      setShouldScrollToResults(false);
       return;
     }
 
@@ -85,8 +91,7 @@ export function FrameCalcApp() {
       behavior: "smooth",
       block: "start",
     });
-    setShouldScrollToResults(false);
-  }, [shouldScrollToResults, uiState.kind]);
+  }, [scrollRequestId, uiState.kind]);
 
   function saveCurrentSnapshotIfNeeded(): void {
     if (currentSnapshot === null || readySignature === null) {
@@ -111,7 +116,8 @@ export function FrameCalcApp() {
     setTotalLengthInput(entry.snapshot.totalLengthInput);
     setGapCountInput(entry.snapshot.gapCountInput);
     setThicknessInput(entry.snapshot.thicknessInput);
-    setShouldScrollToResults(true);
+    setEndRailMode(entry.snapshot.endRailMode ?? "with-ends");
+    setScrollRequestId((currentId) => currentId + 1);
   }
 
   function handleDeleteHistory(entry: CalculationHistoryEntry): void {
@@ -187,6 +193,13 @@ export function FrameCalcApp() {
               onChange={setThicknessInput}
               onCommit={saveCurrentSnapshotIfNeeded}
             />
+            <EndRailModeField
+              value={endRailMode}
+              onChange={(value) => {
+                setEndRailMode(value);
+                setLastSavedSignature(null);
+              }}
+            />
           </div>
         </section>
 
@@ -197,7 +210,7 @@ export function FrameCalcApp() {
             <SummarySection railCount={uiState.layout.railCount} gapSize={uiState.layout.gapSize} />
             <ResultsSection
               positions={uiState.layout.positions}
-              sectionRef={resultsSectionRef}
+              setSectionElement={setResultsSectionElement}
             />
           </>
         ) : null}
@@ -278,6 +291,25 @@ function MetricField(props: {
   );
 }
 
+function EndRailModeField(props: {
+  value: EndRailMode;
+  onChange: (value: EndRailMode) => void;
+}) {
+  return (
+    <label className="flex cursor-pointer items-center gap-3 rounded-[1.25rem] border border-[rgba(112,72,42,0.12)] bg-[rgba(255,255,255,0.68)] px-4 py-3 transition has-[:checked]:border-[rgba(189,90,42,0.42)] has-[:checked]:bg-[rgba(255,244,233,0.94)] has-[:checked]:shadow-[0_10px_24px_rgba(117,72,39,0.08)]">
+      <input
+        type="checkbox"
+        checked={props.value === "without-ends"}
+        onChange={(event) => {
+          props.onChange(event.currentTarget.checked ? "without-ends" : "with-ends");
+        }}
+        className="h-5 w-5 rounded border-[rgba(112,72,42,0.28)] text-[var(--accent)] accent-[var(--accent)]"
+      />
+      <span className="text-sm font-semibold">끝단 없음</span>
+    </label>
+  );
+}
+
 function StateCard(props: {
   uiState: ReturnType<typeof buildCalculatorUiState>;
 }) {
@@ -331,17 +363,20 @@ function SummaryCard(props: {
   );
 }
 
-function ResultsSection(props: {
+function ResultsSection({
+  positions,
+  setSectionElement,
+}: {
   positions: Array<{
     index: number;
     start: number;
     end: number;
   }>;
-  sectionRef: RefObject<HTMLElement | null>;
+  setSectionElement: (element: HTMLElement | null) => void;
 }) {
   return (
     <section
-      ref={props.sectionRef}
+      ref={setSectionElement}
       className="panel rise-in mt-5 rounded-[2rem] p-5 [animation-delay:300ms]"
     >
       <div className="mb-4 flex items-center justify-between gap-3">
@@ -349,12 +384,12 @@ function ResultsSection(props: {
           <h2 className="text-lg font-semibold tracking-[-0.02em]">난간 시작 위치 테이블</h2>
         </div>
         <div className="rounded-full bg-[rgba(189,90,42,0.1)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--accent)]">
-          {props.positions.length} Rails
+          {positions.length} Rails
         </div>
       </div>
 
       <div className="grid gap-3 md:hidden">
-        {props.positions.map((position) => {
+        {positions.map((position) => {
           return (
             <article
               key={position.index}
@@ -391,7 +426,7 @@ function ResultsSection(props: {
           <div className="text-right">시작 위치 (mm)</div>
           <div className="text-right">끝 위치 (mm)</div>
         </div>
-        {props.positions.map((position) => {
+        {positions.map((position) => {
           return (
             <div
               key={position.index}
@@ -430,6 +465,7 @@ function HistorySection(props: {
             <span>전체(mm)</span>
             <span className="text-right">간격(개)</span>
             <span className="text-right">두께(mm)</span>
+            <span className="text-right">끝단</span>
           </div>
         ) : null}
       </div>
@@ -479,6 +515,7 @@ function HistoryListItem(props: {
           <span className="min-w-0 truncate">{snapshot.totalLengthInput}</span>
           <span className="text-right">{snapshot.gapCountInput}</span>
           <span className="text-right">{snapshot.thicknessInput}</span>
+          <span className="text-right">{formatEndRailModeLabel(snapshot.endRailMode)}</span>
         </span>
       </button>
 
@@ -496,4 +533,8 @@ function HistoryListItem(props: {
       </div>
     </article>
   );
+}
+
+function formatEndRailModeLabel(endRailMode: EndRailMode | undefined): string {
+  return endRailMode === "without-ends" ? "없음" : "있음";
 }
